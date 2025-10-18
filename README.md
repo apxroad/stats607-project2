@@ -11,3 +11,7 @@ make analyze    # aggregate results (stub)
 make figures    # plots (stub)
 make test       # pytest
 make all        # simulate → analyze → figures
+
+
+## Baseline config
+Uses `config/baseline.yaml` (Normal(0,1), n={1000,5000}, reps=10, J=100).
