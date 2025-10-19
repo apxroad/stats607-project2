@@ -1,8 +1,6 @@
 numpy
-scipy
 pandas
+PyYAML
 matplotlib
-pyarrow
-tqdm
-pytest
-pyyaml
+fastparquet
+scipy

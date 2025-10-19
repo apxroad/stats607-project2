@@ -89,5 +89,5 @@ def run_stream(
     )
 
     Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
-    df.to_parquet(out_path, index=False)
+    df.to_parquet(out_path, index=False, engine="fastparquet")
     return out_path

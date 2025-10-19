@@ -1,23 +1,3 @@
-.PHONY: all simulate analyze figures test clean
-
-CONFIG := config/baseline.yaml
-
-all: simulate analyze figures
-
-simulate:
-	python -m src_cli.simulate --config $(CONFIG)
-
-analyze:
-	python -m src_cli.analyze --config $(CONFIG)
-
-figures:
-	python -m src_cli.figures --config $(CONFIG)
-
-test:
-	pytest -q
-
-clean:
-	rm -rf results/raw/* results/figures/* results/*.csv
 # --- 607 targets (Polya/DP) ---
 POLYA_CFG := config/polya.yaml
 
@@ -33,19 +13,24 @@ analyze:
 figures:
 	python -m src_cli.figures --config $(POLYA_CFG)
 	python -m src_cli.figures_polya_summary
+	python -m src_cli.figures_overview --config $(POLYA_CFG)
+	python -m src_cli.panels_from_config --config $(POLYA_CFG)
+	python -m src_cli.figures_sweep_M
 
-.PHONY: examples
-examples:
-	PYTHONPATH=. python examples/polya_single_t.py --t 0.5 --alpha 5 --n 100 --reps 3000 --base uniform
-	PYTHONPATH=. python examples/polya_panel.py --base uniform --ts 0.25 0.5 0.75 --alphas 1 5 20 --ns 100 500 1000 --reps 4000
+.PHONY: sweepm
+sweepm:
+	python -m src_cli.sweep_M --config $(POLYA_CFG) --Ms 30 60 100 200
 
 .PHONY: all
 all: simulate analyze figures
 
+.PHONY: everything
+everything: clean simulate analyze sweepm analyze figures
+
 .PHONY: test
 test:
-	pytest -q
+	python -m pytest -q
 
 .PHONY: clean
 clean:
-	rm -rf results/raw/* results/figures/* .pytest_cache __pycache__
+	rm -rf results/raw* results/figures* results/polya_checks*.csv .pytest_cache __pycache__

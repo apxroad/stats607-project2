@@ -34,7 +34,7 @@ def main():
 
     rows = []
     for f in files:
-        df = pd.read_parquet(f)
+        df = pd.read_parquet(f, engine="fastparquet")
         xs = df["x_i"].to_numpy()
         n  = int(df["n"].iloc[0])
         # K_n(t): vectorized counts

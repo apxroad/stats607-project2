@@ -43,7 +43,8 @@ def make_panels(base: str, ts: List[float], alphas: List[float], n: int, reps: i
             ax.set_xlim(0,1)
             if i == len(ts)-1: ax.set_xlabel("P((−∞, t])")
             if j == 0: ax.set_ylabel("Density")
-    fig_prior.suptitle(f"Pólya prior panels  (base={base},  M={reps})", y=0.99, fontsize=12)
+    fig_prior.suptitle(f"Pólya prior panels  (base={base},  N={n},  M={reps})")
+    fig_prior.suptitle(f"Pólya prior panels  (base={base},  N={n},  M={reps})")
     fig_prior.tight_layout(rect=[0,0,1,0.96])
     prior_path = f"results/figures/polya_prior_panels_n{n}.png"
     fig_prior.savefig(prior_path, dpi=150)

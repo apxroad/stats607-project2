@@ -22,7 +22,7 @@ def test_reproducible_output(tmp_path: Path):
     run_stream(out_path=str(out1), **kwargs)
     run_stream(out_path=str(out2), **kwargs)
 
-    df1 = pd.read_parquet(out1)
-    df2 = pd.read_parquet(out2)
+    df1 = pd.read_parquet(out1, engine="fastparquet")
+    df2 = pd.read_parquet(out2, engine="fastparquet")
     # exact equality with fixed RNG + same code path
     assert df1.equals(df2)

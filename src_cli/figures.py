@@ -15,7 +15,7 @@ def plot_convergence(raw_files: list[str], outdir: str):
     examples: dict[tuple[str, int], pd.DataFrame] = {}
 
     for f in raw_files:
-        df = pd.read_parquet(f)
+        df = pd.read_parquet(f, engine="fastparquet")
         key = (str(df["method"].iloc[0]), int(df["n"].iloc[0]))
         # keep the first file we see for each (method, n)
         if key not in examples:
@@ -52,7 +52,7 @@ def plot_pit_hist(raw_files: list[str], outdir: str):
     """Combine PIT across reps per (method, n) and draw histograms."""
     frames = []
     for f in raw_files:
-        df = pd.read_parquet(f)[["method", "n", "pit"]].dropna()
+        df = pd.read_parquet(f, engine="fastparquet")[["method", "n", "pit"]].dropna()
         if not df.empty:
             frames.append(df)
     if not frames:
