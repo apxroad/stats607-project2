@@ -1,35 +1,31 @@
-# ADEMP — Baseline (i.i.d. Normal)
+# ADEMP — Setting 1 (DP/Pólya, Uniform base)
 
-## Aims (A)
-Assess one-step calibration and convergence of predictive CDFs under i.i.d. \(\mathcal N(0,1)\); compare ECDF vs Normal-based predictives.
+## Aims
+Validate exchangeable predictive theory under a Dirichlet Process (DP) prior:
+1) Prior/posterior Beta laws for \(F(({-}\infty,t])\);
+2) Predictive calibration (PIT \(\sim\) U(0,1));
+3) Convergence of predictive CDF to truth;
+4) 95% equal-tailed coverage;
+5) Monte Carlo stability vs \(M\).
 
-## Data-Generating Mechanisms (D)
-- Truth \(F\): \(\mathcal N(0,1)\).
-- Stream lengths \(n \in \{1000, 5000\}\).
-- Repetitions: 10 (initial; scalable).
-- Grid: \(J=100\) points on \([-4,4]\).
+## Data-generating mechanisms (D)
+- Base \(G_0 = \mathrm{Unif}(0,1)\).
+- \(F \sim \mathrm{DP}(\alpha, G_0)\), \(\alpha \in \{1,5,20\}\).
+- Sample sizes \(n \in \{100, 500, 1000\}\).
+- Thresholds \(t \in \{0.25, 0.5, 0.75\}\).
 
 ## Estimands (E)
-- Predictive CDF on grid \(\{t_j\}\).
-- Quantiles \(q_{0.1}, q_{0.5}, q_{0.9}\).
-- PIT values \(U_i=\tilde P_{i-1}(X_i)\).
+- \(F(({-}\infty,t])\) at selected \(t\).
+- Predictive CDF \(F_i\) vs truth on a fixed grid; PIT \(U_i = F_i(X_i)\).
 
 ## Methods (M)
-- Empirical ECDF (baseline).
-- Normal plug-in predictive (online \(\hat\mu_n,\hat\sigma_n\)).
-- Conjugate \(t\)-predictive (Normal–Inverse-Gamma).
+- Blackwell–MacQueen Pólya predictive:
+  \[
+  X_{i}\mid X_{1:i-1}\ \sim\ \frac{\alpha}{\alpha+i-1}G_0 + \frac{1}{\alpha+i-1}\sum_{j=1}^{i-1}\delta_{X_j}.
+  \]
 
-## Performance Measures (P)
-- Distances to oracle \(F\): \(d^{(\infty)}\) and RMSE over the grid.
-- PIT histograms; simple uniformity summary.
-- (Later) mean log predictive density once \(pdf\) is exposed.
-
-### Design Table
-| Factor  | Levels                                  |
-|-------: |:----------------------------------------|
-| Truth   | \(\mathcal N(0,1)\)                     |
-| \(n\)   | 1000, 5000                              |
-| Reps    | 10                                      |
-| Grid    | \(J=100\) on \([-4,4]\)                 |
-| Methods | ECDF, Normal plug-in, Conjugate \(t\)   |
-| Metrics | PIT, \(d^{(\infty)}\), RMSE (every 50)  |
+## Performance (P)
+- PIT histogram flatness; distances \(d^{(\infty)}\), RMSE vs step \(i\).
+- Beta moments match: empirical mean/variance vs theory.
+- 95% equal-tailed posterior CI coverage near 0.95.
+- Sensitivity of bias/coverage vs \(M\) (e.g., 30–200).
