@@ -1,29 +1,22 @@
+# src/simulation.py
 from __future__ import annotations
+
 import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .dgps import NormalTruth         # baseline truth
+from .dgps import NormalTruth, UniformTruth
 from .metrics import d_infty, d_rmse, make_grid
-from .methods import EmpiricalPredictive, NormalPluginPredictive, StudentTPredictive
 
-# map names in config -> classes
-METHODS = {
-    "empirical_ecdf": EmpiricalPredictive,
-    "normal_plugin": NormalPluginPredictive,
-    "student_t_conjugate": StudentTPredictive,
-}
 
-def _build_method(method_name: str, n: int):
-    if method_name == "empirical_ecdf":
-        return EmpiricalPredictive(max_n=n), "empirical_ecdf"
-    elif method_name == "normal_plugin":
-        return NormalPluginPredictive(), "normal_plugin"
-    elif method_name == "student_t_conjugate":
-        return StudentTPredictive(), "student_t_conjugate"
+def _build_method(method_name: str, n: int, **params):
+    if method_name == "polya_dp":
+        from .methods import PolyaPredictive
+        return PolyaPredictive(**params), "polya_dp"
     else:
         raise ValueError(f"Unknown method: {method_name}")
+
 
 def run_stream(
     method_name: str,
@@ -34,22 +27,32 @@ def run_stream(
     record_every: int,
     seed: int,
     out_path: str,
+    **params,
 ) -> str:
     """
-    Stream X_1..X_n ~ N(0,1). Before seeing X_i, evaluate predictive CDF on grid,
-    compute distances to oracle, record PIT; then update with X_i. Save parquet.
+    Stream X_1..X_n i.i.d. from the chosen base G0 (Uniform or Normal).
+    Before seeing X_i, evaluate the predictive CDF on the grid, record PIT,
+    and (thinned) distances to the oracle; then update with X_i. Save parquet.
     """
     rng = np.random.default_rng(seed)
-    truth = NormalTruth()
+
+    # pick the truth to match the method's base (exchangeable setup)
+    base_name = params.get("base", "uniform")
+    if base_name == "uniform":
+        truth = UniformTruth(0.0, 1.0)
+    else:
+        truth = NormalTruth()
+
     x = truth.sample(n=n, seed=seed)
 
+    # grid and oracle CDF on the grid
     t_grid = make_grid(J, tmin, tmax)
     c_true_grid = truth.cdf_truth(t_grid)
 
-    method, mname = _build_method(method_name, n)
-    # init_state: ECDF needs max_n, others ignore kwargs
+    # build method (Pólya DP) and init its state
+    method, mname = _build_method(method_name, n, **params)
     try:
-        state = method.init_state(max_n=n)  # works for ECDF
+        state = method.init_state(max_n=n)  # some methods may accept this kwarg
     except TypeError:
         state = method.init_state()
 
@@ -57,16 +60,16 @@ def run_stream(
     for i in range(n):
         x_i = x[i]
 
-        # evaluate BEFORE observing x_i
-        # PIT requires cdf_est at x_i before update
+        # Evaluate BEFORE observing x_i (one-step predictive)
         if i == 0:
             pit_i = np.nan
             d_inf_i = np.nan
             d_rmse_i = np.nan
         else:
-            # pit
+            # PIT at the realized x_i
             pit_i = float(method.cdf_est(state, x_i))
-            # distances on grid (thinned)
+
+            # Distances on grid, only at thinned steps or final step
             if (i % record_every) == 0 or i == n - 1:
                 c_est_grid = np.asarray(method.cdf_est(state, t_grid), dtype=float)
                 d_inf_i = d_infty(c_est_grid, c_true_grid)
@@ -77,11 +80,12 @@ def run_stream(
 
         recs.append((i, mname, x_i, pit_i, d_inf_i, d_rmse_i, seed, n))
 
-        # now update with x_i
+        # Update with the new observation
         state = method.update(state, float(x_i))
 
     df = pd.DataFrame(
-        recs, columns=["i", "method", "x_i", "pit", "d_infty", "d_rmse", "seed", "n"]
+        recs,
+        columns=["i", "method", "x_i", "pit", "d_infty", "d_rmse", "seed", "n"],
     )
 
     Path(os.path.dirname(out_path)).mkdir(parents=True, exist_ok=True)
