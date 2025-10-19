@@ -8,3 +8,9 @@ results/figures/
 figures/
 .vscode/
 .idea/
+results/raw/
+results/figures/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
