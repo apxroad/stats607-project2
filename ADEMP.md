@@ -1,35 +1,17 @@
-# ADEMP — Baseline (i.i.d. Normal)
+# ADEMP — Pólya/DP Baseline
+**Aims.** Verify DP/Pólya one-step predictive against theory under Uniform(0,1) base:
+- Prior/posterior Beta at single t; 
+- Across-rep mean/var match; 95% CI coverage.
 
-## Aims (A)
-Assess one-step calibration and convergence of predictive CDFs under i.i.d. \(\mathcal N(0,1)\); compare ECDF vs Normal-based predictives.
+**Data.** X₁:n ~ G₀, with G₀ = Uniform(0,1). n ∈ {100,500,1000}. M = reps per n.
 
-## Data-Generating Mechanisms (D)
-- Truth \(F\): \(\mathcal N(0,1)\).
-- Stream lengths \(n \in \{1000, 5000\}\).
-- Repetitions: 10 (initial; scalable).
-- Grid: \(J=100\) points on \([-4,4]\).
+**Estimand/Estimates.** For each t ∈ {0.25,0.5,0.75}, target F₀(t)=G₀(t).
+Estimate with Pólya predictive: \tilde Pₙ((−∞,t]) = (αG₀(t)+Kₙ(t))/(α+n).
 
-## Estimands (E)
-- Predictive CDF on grid \(\{t_j\}\).
-- Quantiles \(q_{0.1}, q_{0.5}, q_{0.9}\).
-- PIT values \(U_i=\tilde P_{i-1}(X_i)\).
+**Methods.** Dirichlet-process (α∈{1,5,20}), base = Uniform. Metrics: PIT, d^(∞), RMSE.
+Summaries: empirical mean/var across reps vs theory; Beta CI coverage.
 
-## Methods (M)
-- Empirical ECDF (baseline).
-- Normal plug-in predictive (online \(\hat\mu_n,\hat\sigma_n\)).
-- Conjugate \(t\)-predictive (Normal–Inverse-Gamma).
-
-## Performance Measures (P)
-- Distances to oracle \(F\): \(d^{(\infty)}\) and RMSE over the grid.
-- PIT histograms; simple uniformity summary.
-- (Later) mean log predictive density once \(pdf\) is exposed.
-
-### Design Table
-| Factor  | Levels                                  |
-|-------: |:----------------------------------------|
-| Truth   | \(\mathcal N(0,1)\)                     |
-| \(n\)   | 1000, 5000                              |
-| Reps    | 10                                      |
-| Grid    | \(J=100\) on \([-4,4]\)                 |
-| Methods | ECDF, Normal plug-in, Conjugate \(t\)   |
-| Metrics | PIT, \(d^{(\infty)}\), RMSE (every 50)  |
+**Performance.**
+- Expect emp_mean ≈ theory_mean (=G₀(t))
+- emp_var ≈ n·G₀(t)[1−G₀(t)]/(α+n)²
+- coverage ≈ 0.95 (Beta posterior CI).
