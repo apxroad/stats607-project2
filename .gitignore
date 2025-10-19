@@ -16,3 +16,8 @@ __pycache__/
 .ipynb_checkpoints/
 
 results/
+# generated
+results/raw/*
+results/figures/*
+results/polya_checks*.csv
+!.gitkeep
