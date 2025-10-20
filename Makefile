@@ -34,3 +34,16 @@ test:
 .PHONY: clean
 clean:
 	rm -rf results/raw* results/figures* results/polya_checks*.csv .pytest_cache __pycache__
+
+.PHONY: panels-cont
+panels-cont:
+	python -m src_cli.panels_cont_from_config --config config/polya.yaml --N 2000 --M 4000 --outdir results/figures --do-prior
+.PHONY: predictive_paths
+predictive_paths:
+	python -m src_cli.log_predictive_paths --n 1000 --alpha 5 --t 0.25 0.5 0.75 --seed 2025 --base uniform
+	python -m src_cli.figures_predictive_paths --csv results/raw/predictive_path_n1000_a5.0_seed2025_uniform.csv --title "Predictive paths (n=1000, α=5, base=uniform)"
+
+.PHONY: partB
+partB:
+	python -m src_cli.log_pit_and_distances --n 1000 --alpha 5 --t 0.25 0.5 0.75 --seed 2025 --base uniform
+	python -m src_cli.figures_partB --stem partB_n1000_a5.0_seed2025_uniform --title "n=1000, α=5, base=uniform"
