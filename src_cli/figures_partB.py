@@ -1,0 +1,117 @@
+from __future__ import annotations
+import argparse
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def read_csv_maybe(p: Path) -> pd.DataFrame | None:
+    if p.exists():
+        return pd.read_csv(p)
+    return None
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Part B figures: PIT, distances, predictive P_m paths.")
+    ap.add_argument("--stem", required=True, help="common stem of CSV files (e.g. n1000_a5.0_seed2025_uniform)")
+    ap.add_argument("--title", default="", help="optional title to annotate plots")
+    args = ap.parse_args()
+
+    raw = Path("results/raw")
+    out = Path("results/figures")
+    out.mkdir(parents=True, exist_ok=True)
+
+    # --- Load data (paths: try two variants) ---
+    path_csv_pm   = raw / f"Pm_paths_{args.stem}.csv"
+    path_csv_alt  = raw / f"predictive_path_{args.stem}.csv"
+    path_csv_pit  = raw / f"PIT_{args.stem}.csv"
+    path_csv_dist = raw / f"distances_{args.stem}.csv"
+
+    # predictive paths (required for the paths figure; we fallback to predictive_path_*)
+    dfP = read_csv_maybe(path_csv_pm)
+    if dfP is None:
+        dfP = read_csv_maybe(path_csv_alt)
+    if dfP is None:
+        print(f"[warn] Missing predictive paths CSV. Tried:\n  - {path_csv_pm}\n  - {path_csv_alt}")
+    else:
+        # Expect columns like: m, t, Pm  (from log_predictive_paths)
+        if not {"m", "t", "Pm"}.issubset(dfP.columns):
+            raise ValueError(f"Predictive paths CSV missing columns; got {dfP.columns}.")
+
+    # PIT (optional)
+    dfU = read_csv_maybe(path_csv_pit)
+    if dfU is not None:
+        # Expect at least 'pit' column (optionally i / t)
+        if "pit" not in dfU.columns:
+            raise ValueError(f"PIT CSV missing 'pit' column; got {dfU.columns}.")
+
+    # distances (optional)
+    dfD = read_csv_maybe(path_csv_dist)
+    if dfD is not None:
+        # Expect columns like: i, d_infty, d_rmse
+        need = {"i", "d_infty", "d_rmse"}
+        if not need.issubset(dfD.columns):
+            raise ValueError(f"Distances CSV missing {need}; got {dfD.columns}.")
+
+    # --- Figure 1: PIT histogram ---
+    if dfU is not None:
+        plt.figure(figsize=(6.0, 4.0))
+        plt.hist(dfU["pit"].dropna().values, bins=20, density=True, edgecolor="black")
+        plt.axhline(1.0, color="k", lw=1, ls="--")  # uniform density reference
+        if args.title:
+            plt.title(f"PIT histogram — {args.title}")
+        else:
+            plt.title("PIT histogram")
+        plt.xlabel("PIT U"); plt.ylabel("Density")
+        plt.tight_layout()
+        out1 = out / f"partB_PIT_{args.stem}.png"
+        plt.savefig(out1, dpi=150); plt.close()
+        print(f"[ok] wrote {out1}")
+    else:
+        print(f"[skip] No PIT CSV found; skipped PIT figure.")
+
+    # --- Figure 2: convergence (distances vs i) ---
+    if dfD is not None:
+        plt.figure(figsize=(6.5, 4.0))
+        plt.plot(dfD["i"], dfD["d_infty"], label=r"$d^{(\infty)}$")
+        plt.plot(dfD["i"], dfD["d_rmse"],  label="RMSE")
+        plt.xlabel("step i"); plt.ylabel("distance")
+        if args.title:
+            plt.title(f"Convergence — {args.title}")
+        else:
+            plt.title("Convergence")
+        plt.legend(frameon=False)
+        plt.tight_layout()
+        out2 = out / f"partB_convergence_{args.stem}.png"
+        plt.savefig(out2, dpi=150); plt.close()
+        print(f"[ok] wrote {out2}")
+    else:
+        print(f"[skip] No distances CSV found; skipped convergence figure.")
+
+    # --- Figure 3: predictive paths P_m(t) vs m (always shown if we have a paths CSV) ---
+    if dfP is not None:
+        # lines per t; add dashed y=t reference line
+        tvals = sorted(pd.unique(dfP["t"]))
+        plt.figure(figsize=(7.0, 4.2))
+        for t in tvals:
+            sub = dfP[dfP["t"] == t].sort_values("m")
+            plt.plot(sub["m"], sub["Pm"], label=f"t={t}")
+            plt.axhline(float(t), lw=1, ls="--", color="k")
+        plt.xlabel("m"); plt.ylabel(r"$P_m((-\infty, t])$")
+        if args.title:
+            plt.title(f"Predictive path trajectories — {args.title}")
+        else:
+            plt.title("Predictive path trajectories")
+        plt.legend(frameon=False)
+        plt.tight_layout()
+        out3 = out / f"partB_paths_{args.stem}.png"
+        plt.savefig(out3, dpi=150); plt.close()
+        print(f"[ok] wrote {out3}")
+    else:
+        print(f"[skip] No predictive paths CSV found; skipped paths figure.")
+
+
+if __name__ == "__main__":
+    main()
