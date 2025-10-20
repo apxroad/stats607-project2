@@ -47,3 +47,8 @@ predictive_paths:
 partB:
 	python -m src_cli.log_pit_and_distances --n 1000 --alpha 5 --t 0.25 0.5 0.75 --seed 2025 --base uniform
 	python -m src_cli.figures_partB --stem partB_n1000_a5.0_seed2025_uniform --title "n=1000, α=5, base=uniform"
+
+.PHONY: partC
+partC:
+	python -m src_cli.log_prop26 --alpha 5 --base uniform --t 0.25 0.5 0.75 --n 100 500 1000 --M 400 --L 50000 --seed 2025
+	python -m src_cli.figures_prop26 --csv results/raw/prop26_M400_L50000_a5.0_seed2025_uniform.csv --title "α=5, base=uniform"
