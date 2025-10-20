@@ -1,148 +1,87 @@
-# Project 2 — Exchangeable Predictives (Pólya / Dirichlet Process)
+# STATS 607 — Project 2: Exchangeable Predictives under a Pólya (Dirichlet Process) Model
 
-This project refactors the original exploratory code into a clear, **installable**, **tested**, and
-**one-command** pipeline that reproduces the DP/Pólya baseline (Setting 1): sequential predictives,
-PIT calibration, convergence diagnostics, prior/posterior Beta panels, coverage, and M-sensitivity.
-
-**Goal:** frictionless reproducibility — clone, install, run one command, get the same outputs.
+Reproducible code for Section 2.4 experiments (Fortini & Petrone, 2024):  
+**Part A** prior/posterior (Beta) by *continuation*, **Part B** predictive diagnostics (PIT & convergence),  
+**Part C** Proposition 2.6 predictive-only CIs for the **limit mass** F̃(t).
 
 ---
 
-## What’s in this repo
-
-- `config/` — experiment configs
-  - `polya.yaml` — Setting 1 (DP/Pólya with Uniform base)
-- `src/` — library code
-  - `dgps.py` — truths (Uniform/Normal), sampling and CDF/PDF helpers
-  - `methods.py` — `PolyaPredictive` (Blackwell–MacQueen Pólya urn)
-  - `metrics.py` — distances (d∞, RMSE), grids, PIT helpers
-  - `simulation.py` — stream runner (sequential predictive experiment)
-- `src_cli/` — command-line entry points
-  - `simulate.py` — run raw Monte Carlo streams to Parquet
-  - `analyze_polya.py` — Beta moments, coverage, summaries → CSV
-  - `figures.py` — convergence (d∞/RMSE) + PIT per \(n\)
-  - `figures_polya_summary.py` — mean/variance vs theory + coverage
-  - `figures_overview.py` — single panel with d∞, RMSE, PIT
-  - `sweep_M.py` — sweep Monte Carlo reps \(M\) and save per-M CSVs
-  - `figures_sweep_M.py` — bias & coverage vs \(M\)
-  - `panels_from_config.py` — prior/posterior panels wrapper
-- `examples/` — panel script
-  - `polya_panel.py` — prior/posterior Beta overlays (by \(t,\alpha,n\))
-- `tests/` — pytest suite (sanity, exchangeability, reproducibility)
-- `results/` — outputs (git-ignored except `.gitkeep`)
-  - `raw/` — Parquet runs
-  - `figures/` — PNG figures
-- `README.md` — this file
-- `ADEMP.md` — design summary
-- `ANALYSIS.md` — short narrative findings
-
-> Note: large/derived artifacts under `results/` are **not** tracked by git.
-
----
-
-## Environment & install
-
-> Python 3.10+ recommended.
-
+## Environment
 ```bash
-python -m venv .venv
-source .venv/bin/activate             # Windows: .venv\Scripts\activate
-python -m pip install -U pip
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+export PYTHONPATH=.
 ```
 
----
-
-## Run the full pipeline (one command)
-
+## One-command runs (Make)
 ```bash
+# Full DP/Pólya baseline: sim + analysis + panels + M-sweep
 make everything
+
+# Prior/posterior panels via continuation (Part A)
+make panels-cont
+
+# Predictive paths and diagnostics (Part B)
+make predictive_paths
+make partB
+
+# Proposition 2.6 (Part C) — build coverage/width/pooled-Z figures
+python -m src_cli.prop26 --config config/polya.yaml
 ```
 
-This runs:
-- **simulate** → DP/Pólya streams per `config/polya.yaml`
-- **analyze** → `results/polya_checks.csv`
-- **sweepm** → per-M CSVs `results/polya_checks_M*.csv`
-- **figures** → all figures into `results/figures/`
-
-### Expected outputs (written to `results/figures/`)
-
-- `overview_polya_dp.png` — panel: \(d^{(\infty)}\), RMSE, PIT  
-- `polya_prior_panels_n{N}.png`, `polya_posterior_panels_n{N}.png` — Beta overlays  
-- `polya_mean_emp_vs_theory.png`, `polya_var_emp_vs_theory.png` — moments vs theory  
-- `polya_coverage.png` — 95% equal-tailed coverage  
-- `polya_bias_vs_M.png`, `polya_coverage_vs_M.png` — sensitivity to \(M\)
-
----
-
-## Makefile targets
-
+### CLI snippets (if you prefer explicit commands)
 ```bash
-make simulate    # raw runs → results/raw/
-make analyze     # summaries → results/polya_checks.csv
-make sweepm      # run M ∈ {30,60,100,200} → results/polya_checks_M*.csv
-make figures     # all plots (overview, panels, summaries, M-sweep)
-make test        # pytest -q
-make clean       # clear results/* (keeps .gitkeep)
+# Continuation panels (posterior & optional prior)
+python -m src_cli.panels_cont_from_config --config config/polya.yaml --N 2000 --M 4000 --outdir results/figures --do-prior
+
+# Log predictive paths for n, α, t-set; then plot
+python -m src_cli.log_predictive_paths --n 1000 --alpha 5 --t 0.25 0.5 0.75 --seed 2025 --base uniform
+python -m src_cli.figures_predictive_paths --csv results/raw/predictive_path_n1000_a5.0_seed2025_uniform.csv --title "Predictive paths (n=1000, α=5)"
+
+# Part B all-in-one (PIT + distances + Pm paths)
+make partB
+# (writes results/raw/{PIT,distances,Pm_paths}_*.csv and figures/partB_*.png)
 ```
 
----
+## What gets written
+- **results/raw/** CSVs: Pm paths, PIT sequences, convergence distances, Prop 2.6 summaries.
+- **results/figures/** PNGs: prior/posterior panels, overview, bias/coverage vs M, predictive paths, Part B plots, Prop 2.6 plots.
 
-## Testing
+Both folders are kept but files are git‑ignored (via `.gitignore` with `.gitkeep`).
 
+## Tests
 ```bash
 python -m pytest -q
 ```
+Covers predictive updates, exchangeability properties, and CLI smoke tests.
 
-Covers:
-- Truth sampling & CDF (Uniform)
-- Pólya predictive update & PIT shape
-- Reproducibility of raw outputs (fixed RNG)
-
----
-
-## Project structure
-
-```text
-.
-├── config/
-│   └── polya.yaml
-├── examples/
-│   └── polya_panel.py
-├── results/
-│   ├── figures/         # PNGs (git-ignored; .gitkeep tracked)
-│   └── raw/             # Parquet runs (git-ignored; .gitkeep tracked)
-├── src/
-│   ├── dgps.py
-│   ├── methods.py
-│   ├── metrics.py
-│   └── simulation.py
-├── src_cli/
-│   ├── simulate.py
-│   ├── analyze_polya.py
-│   ├── figures.py
-│   ├── figures_polya_summary.py
-│   ├── figures_overview.py
-│   ├── sweep_M.py
-│   ├── figures_sweep_M.py
-│   └── panels_from_config.py
-├── tests/
-│   ├── test_dgp.py
-│   ├── test_exchangeability.py
-│   └── test_repro.py
-├── README.md
-├── ADEMP.md
-├── ANALYSIS.md
-├── requirements.txt
-├── Makefile
-└── .gitignore
+## Structure (selected)
+```
+src/
+  polya.py                # Pólya urn primitives (sampler, predictive, helpers)
+  metrics.py              # d^∞ and RMSE on grids
+  simulation.py           # drivers for generating raw streams
+src_cli/
+  panels_cont_from_config.py   # Part A prior/posterior by continuation
+  post_continuation.py         # Single-panel posterior continuation (debug)
+  log_predictive_paths.py      # Part B path logger
+  figures_predictive_paths.py  # Part B path figure
+  log_pit_and_distances.py     # Part B PIT + convergence logger
+  figures_partB.py             # Part B figures (PIT, convergence, paths)
+  prop26.py                    # Part C coverage/width/Z figures
+  figures_polya_summary.py     # Part A moment checks
+config/polya.yaml              # α, t, n, seeds, and base selection
+Makefile                       # one-command targets
 ```
 
+## Interpretation (short)
+- **Part A**: Histograms line up with **Beta** overlays; mean/variance match theory; coverage near nominal.
+- **Part B**: PIT ≈ Uniform; convergence curves decrease; predictive paths stabilize.
+- **Part C**: Prop 2.6 CIs for F̃(t) achieve near‑nominal coverage and shrink with n; pooled Z looks ~Normal.
+
 ---
 
-## Troubleshooting
-
-- **`No module named numpy/pandas`** → activate the venv before running: `source .venv/bin/activate`.  
-- **Missing figures** → ensure `make analyze` produced `results/polya_checks.csv` (then `make figures`).  
-- **Panels missing** → `examples/` must be a package; we include `examples/__init__.py`.  
-- **Slow when \(M\) large** → reduce `--Ms` in `make sweepm` or edit `src_cli/sweep_M.py`.
+**Citation**  
+Fortini, S. & Petrone, S. (2024). *Predictive inference under exchangeability.* arXiv:2402.10126.
