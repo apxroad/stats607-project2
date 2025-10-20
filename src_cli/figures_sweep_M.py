@@ -37,7 +37,7 @@ def main():
             ax.plot(s2["M"], s2["cov_rate"], marker="o", label=f"n={n}")
         ax.axhline(0.95, ls="--", color="k", lw=1)
         ax.set_title(f"Coverage vs M (t={t})"); ax.set_ylabel("Coverage")
-        ax.set_ylim(0, 1)
+        ax.set_ylim(0.7, 1)
         ax.legend(frameon=False, fontsize=9, loc="best")
     axes1[-1].set_xlabel("M (Monte Carlo reps)")
     fig1.tight_layout()
