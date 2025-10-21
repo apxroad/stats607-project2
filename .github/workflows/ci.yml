@@ -1,0 +1,44 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run unit tests
+        run: pytest -q
+
+      # tiny pipeline so it finishes quickly
+      - name: Simulate (tiny)
+        run: |
+          make clean
+          SEED=1 ALPHA=5 BASE=uniform TVALS="0.5" \
+          make simulate
+      - name: Analyze
+        run: |
+          make analyze
+      - name: Figures (only pooled-Z to keep it light)
+        run: |
+          RAW="results/raw"
+          CSV=$(ls $RAW/prop26_*_uniform.csv | head -n1)
+          python -m src_cli.partc_figures_prop26 --csv "$CSV" --title "CI quick"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: |
+            results/**
+            !results/raw/*.csv # optional: keep smaller

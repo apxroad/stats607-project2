@@ -21,3 +21,20 @@ results/raw/*
 results/figures/*
 results/polya_checks*.csv
 !.gitkeep
+# caches and results
+__pycache__/
+.pytest_cache/
+results/
+*.zip
+
+# editor/OS
+.DS_Store
+.vscode/
+
+# ad-hoc backups & temp
+*.bak
+*.bak_*
+*.bak.*
+*.broken
+*.prepit
+*~
