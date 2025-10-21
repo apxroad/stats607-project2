@@ -175,6 +175,7 @@ python -m src_cli.analyze --raw results/raw --summary results/summary --alpha 5.
 ---
 
 ## Estimated runtime
+
 ~7 minutes for the full pipeline (`make all`) on a typical laptop.
 ---
 
