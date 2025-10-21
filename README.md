@@ -177,7 +177,6 @@ python -m src_cli.analyze --raw results/raw --summary results/summary --alpha 5.
 ## Estimated runtime
 
 ~7 minutes for the full pipeline (`make all`) on a typical laptop.
----
 
 ## Summary of key findings
 Across settings, the one-step predictive from the Pólya/DP model is well-calibrated: the pooled \(Z\) statistic closely follows \(\mathcal{N}(0,1)\) (Prop. 2.6). Distances between the predictive CDF and the oracle shrink with \(n\), and the influence of \(\alpha\) is strongest early but fades as data accumulate.
