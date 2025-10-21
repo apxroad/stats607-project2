@@ -65,3 +65,8 @@ __pycache__/
 Makefile.backup.*
 Makefile.before-aliases.*
 Makefile.broken.*
+results/
+__pycache__/
+*.parquet
+*.png
+*.pdf

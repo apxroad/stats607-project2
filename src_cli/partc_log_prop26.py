@@ -5,6 +5,20 @@ import pandas as pd
 
 # ---- base CDF and base sampler ----
 def G0_cdf(t, base="uniform"):
+    """Base CDF G0(t) for the chosen prior base.
+
+    Parameters
+    ----------
+    t : float
+        Threshold.
+    base : {"uniform","normal"}
+        Name of the base distribution.
+
+    Returns
+    -------
+    float
+        G0(t). Uses exact formulas; Φ(t) via `erf` for Normal.
+    """
     if base == "uniform":
         if t <= 0.0: return 0.0
         if t >= 1.0: return 1.0
@@ -16,6 +30,7 @@ def G0_cdf(t, base="uniform"):
         raise ValueError(f"unknown base: {base}")
 
 def sample_from_base(rng, base="uniform"):
+    """Draw a single sample from the base G0 using the provided RNG."""
     if base == "uniform":
         return float(rng.random())
     elif base == "normal":
@@ -25,6 +40,11 @@ def sample_from_base(rng, base="uniform"):
 
 # ---- draw next X under the Pólya urn given current list xs  ----
 def draw_polya_next(xs, alpha, rng, base="uniform"):
+    """One-step Blackwell–MacQueen Pólya update.
+
+    With probability α/(α+m) draw a fresh atom from G0; otherwise pick
+    uniformly among the existing atoms in `xs`.
+    """
     m = len(xs)                       # current size
     p_new = alpha / (alpha + m)       # prob of a fresh draw from G0
     if rng.random() < p_new:
@@ -34,6 +54,25 @@ def draw_polya_next(xs, alpha, rng, base="uniform"):
         return float(xs[j])
 
 def main():
+    """Compute Proposition 2.6 predictive CIs for \tilde F(t) via continuation.
+
+    Outline
+    -------
+    For each n in --n and each replication:
+      1) Generate x_1..x_n from the SAME Pólya urn with base G0 and α.
+      2) Track K_m(t) and P_m(t) iteratively for each t; accumulate
+         V_{n,t} = (1/n) * Σ_{m=1}^n m^2 (P_m − P_{m−1})^2.
+      3) Compute P_n(t) at the end of the prefix.
+      4) CONTINUE THE SAME URN by L extra draws to estimate \tilde F(t) as
+         F̂(t) = (1/L) * Σ 1{x_{n+ℓ} ≤ t}.
+      5) Form Wald CI: P_n(t) ± z * sqrt(V_{n,t}/n), and record coverage of F̂(t).
+
+    Notes
+    -----
+    - We fix z for 95% CIs without SciPy; other levels warn and still use z≈1.95996.
+    - RNG seeding uses a hash of (rep, n) to keep replicates independent.
+    - The continuation uses the SAME urn (same `xs` list), as required by Prop 2.6.
+    """
     ap = argparse.ArgumentParser(
         description="Prop 2.6 predictive CIs for F~(t), with target via continuation on the SAME urn."
     )
@@ -64,11 +103,12 @@ def main():
 
     for n in nvals:
         for rep in range(args.M):
+            # Independent per-(rep,n) seed to avoid path reuse across settings.
             rng = np.random.default_rng(args.seed + 7919*rep + 104729*n)
 
             # --- generate prefix x1..xn from the Pólya urn
             xs = []
-            # book-keeping for each t: K_m(t), previous P_{m-1}, running sum for V_{n,t}
+            # Book-keeping for each t: K_m(t), previous P_{m-1}, running sum for V_{n,t}
             Km = {t: 0 for t in tvals}
             P_prev = {t: G0_cdf(t, args.base) for t in tvals}  # P0(t) = G0(t)
             Vnt = {t: 0.0 for t in tvals}
@@ -103,7 +143,7 @@ def main():
                         tail_leq[t] += 1
             Fhat = {t: tail_leq[t] / float(args.L) for t in tvals}
 
-            # rows
+            # rows: record CI, coverage, width, and supporting quantities
             for t in tvals:
                 se = math.sqrt(max(Vnt[t], 1e-12) / n)
                 lo = Pn[t] - z*se
@@ -116,6 +156,7 @@ def main():
                     "covered": covered, "width": 2*z*se
                 })
 
+    # Persist results
     df = pd.DataFrame(rows)
     stem = f"prop26_M{args.M}_L{args.L}_a{alpha}_seed{args.seed}_{args.base}.csv"
     out = outdir / stem

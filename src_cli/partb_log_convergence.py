@@ -9,6 +9,24 @@ from src.dgps import UniformTruth, NormalTruth
 from src.metrics import make_grid, d_infty, d_rmse
 
 def main():
+    """Log convergence metrics and predictive paths for Part B (no PIT).
+
+    For a chosen base truth (Uniform or Normal), this script:
+      1) Simulates an i.i.d. data stream X_1,...,X_n from the oracle truth.
+      2) Runs an online predictive method (Pólya DP) and, BEFORE each update:
+         - evaluates the estimated CDF on a grid to compute d_∞ and RMSE
+         - records P_m(t) for each requested threshold t
+      3) Writes two tidy CSVs under results/raw/:
+         - distances_{stem}.csv with columns [i, d_infty, d_rmse]
+         - Pm_paths_{stem}.csv with columns [m, t, Pm]
+
+    Notes
+    -----
+    - Evaluation is prequential (one-step-ahead): metrics at time i use data up
+      to i−1 only. The first step (i=0) has no metrics recorded.
+    - Grid endpoints default to [0,1] for Uniform and [-4,4] for Normal;
+      you can override via --tmin/--tmax when base=normal.
+    """
     ap = argparse.ArgumentParser(
         description="Part B — log convergence metrics and P_m(t) paths (no PIT).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -24,6 +42,7 @@ def main():
     args = ap.parse_args()
 
     # Truth and evaluation range
+    # Match the DGP to the method's base to maintain a clean exchangeable setup.
     if args.base == "uniform":
         truth = UniformTruth(0.0, 1.0)
         tmin, tmax = 0.0, 1.0
@@ -31,25 +50,26 @@ def main():
         truth = NormalTruth(0.0, 1.0)
         tmin, tmax = -4.0, 4.0
 
-    # Data stream
+    # Data stream (fixed by seed for reproducibility).
     x = truth.sample(n=args.n, seed=args.seed)
 
-    # Predictive model
+    # Predictive model (Pólya/DP) and its internal state.
     pred = PolyaPredictive(alpha=args.alpha, base=args.base)
     state = pred.init_state()
 
-    # Grid for distance metrics
+    # Grid for distance metrics.
+    # For Normal base, allow user overrides via --tmin/--tmax; else use defaults above.
     grid = make_grid(args.J, args.tmin if args.base == "normal" else tmin,
                             args.tmax if args.base == "normal" else tmax)
     c_true_grid = truth.cdf_truth(grid)
 
-    rec_dist = []  # rows: (i, d_infty, d_rmse)
-    rec_Pm   = []  # rows: (m, t, Pm)
+    rec_dist = []  # rows: (i, d_infty, d_rmse)   — convergence diagnostics
+    rec_Pm   = []  # rows: (m, t, Pm)             — predictive path trajectories
 
     for i in range(args.n):
         xi = float(x[i])
 
-        # Evaluate BEFORE update
+        # Evaluate BEFORE update (prequential).
         if i > 0:
             c_est = np.asarray(pred.cdf_est(state, grid), dtype=float)
             rec_dist.append((i, float(d_infty(c_est, c_true_grid)),
@@ -58,10 +78,10 @@ def main():
                 pm_t = float(pred.cdf_est(state, float(t)))
                 rec_Pm.append((i, float(t), pm_t))
 
-        # Bayesian update
+        # Bayesian update with the new observation.
         state = pred.update(state, xi)
 
-    # Write CSVs
+    # Write CSVs to results/raw with a descriptive stem.
     outdir = Path("results/raw"); outdir.mkdir(parents=True, exist_ok=True)
     stem = f"partB_n{args.n}_a{args.alpha}_seed{args.seed}_{args.base}"
 
