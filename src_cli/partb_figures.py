@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
+from src.plotstyle import apply_plot_style
 
 def _read_csv(p: Path):
     return pd.read_csv(p) if p.exists() else None
@@ -15,6 +16,7 @@ def main():
     ap.add_argument("--stem", required=True, help="common stem, e.g. partB_n1000_a5.0_seed2025_uniform")
     ap.add_argument("--title", default="", help="optional title")
     args = ap.parse_args()
+    apply_plot_style()
 
     raw = Path("results/raw")
     out = Path("results/figures"); out.mkdir(parents=True, exist_ok=True)
@@ -41,7 +43,7 @@ def main():
         plt.legend(frameon=False)
         plt.tight_layout()
         out1 = out / f"partB_convergence_{args.stem}.png"
-        plt.savefig(out1, dpi=150); plt.close()
+        plt.savefig(out1, dpi=150); plt.savefig(out1.with_suffix('.pdf')); plt.close()
         print(f"[ok] wrote {out1}")
     else:
         print(f"[skip] No distances CSV found at {path_dist}; skipped convergence figure.")
@@ -65,7 +67,7 @@ def main():
         plt.legend(frameon=False)
         plt.tight_layout()
         out2 = out / f"partB_paths_{args.stem}.png"
-        plt.savefig(out2, dpi=150); plt.close()
+        plt.savefig(out2, dpi=150); plt.savefig(out2.with_suffix('.pdf')); plt.close()
         print(f"[ok] wrote {out2}")
     else:
         print(f"[skip] No predictive paths CSV found at {path_pm} or {path_alt}; skipped paths figure.")

@@ -1,6 +1,8 @@
 from __future__ import annotations
+from pathlib import Path
 import argparse, numpy as np
 import matplotlib.pyplot as plt
+from src.plotstyle import apply_plot_style
 from scipy.stats import beta
 from src.polya import PolyaSequenceModel, build_prefix, continue_urn_once
 
@@ -36,6 +38,7 @@ def panel_for_n(n: int, ts: list[float], alphas: list[float], M: int, N: int, ba
     fig.tight_layout(rect=[0,0,1,0.96])
     out = f"results/figures/post_panels_cont_n{n}_M{M}_N{N}_{base}.png"
     fig.savefig(out, dpi=140)
+    fig.savefig(Path(out).with_suffix('.pdf'))
     plt.close(fig)
     print(f"[ok] wrote {out}")
 
@@ -49,6 +52,7 @@ def main():
     ap.add_argument("--N", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=20250101)
     args = ap.parse_args()
+    apply_plot_style()
 
     panel_for_n(args.n, args.ts, args.alphas, args.M, args.N, args.base, args.seed)
 

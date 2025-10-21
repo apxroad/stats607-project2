@@ -1,82 +1,80 @@
+from __future__ import annotations
 import argparse
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from src.plotstyle import use_nice_style
+
+from src.plotstyle import apply_plot_style
+
+def normal_pdf(x: np.ndarray) -> np.ndarray:
+    return np.exp(-0.5 * x**2) / np.sqrt(2*np.pi)
+
+def extract_Z(df: pd.DataFrame) -> np.ndarray:
+    cols = set(df.columns)
+    # If 'Z' already exists (older logs), use it.
+    if "Z" in cols:
+        return df["Z"].to_numpy(dtype=float)
+    # Do NOT use lowercase 'z' — that is the CI critical value (≈1.96), not the statistic.
+    need = {"Pn", "Fhat", "Vnt", "n"}
+    if need.issubset(cols):
+        Pn   = df["Pn"].to_numpy(float)
+        Fhat = df["Fhat"].to_numpy(float)
+        Vnt  = df["Vnt"].to_numpy(float)
+        n    = df["n"].to_numpy(float)
+        return (Pn - Fhat) / np.sqrt(Vnt / n)
+    raise ValueError(f"CSV must contain 'Z' or computable fields {need}. Got: {sorted(cols)}")
 
 def main():
-    use_nice_style()
-    ap = argparse.ArgumentParser(description="Figures for Prop 2.6: coverage vs n and CI width vs n.")
-    ap.add_argument("--csv", required=True, help="results/raw/prop26_*.csv produced by log_prop26.py")
-    ap.add_argument("--title", default="", help="figure title suffix")
+    ap = argparse.ArgumentParser(
+        description="Part C — pooled Z only, with N(0,1) overlay (computed from Pn,Fhat,Vnt,n)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    ap.add_argument("--csv", required=True, help="CSV from partc_log_prop26.py")
+    ap.add_argument("--title", default="", help="Custom title (optional)")
+    ap.add_argument("--bins", type=int, default=50, help="Histogram bins")
     args = ap.parse_args()
 
-    raw = Path(args.csv)
-    if not raw.exists():
-        raise FileNotFoundError(raw)
+    apply_plot_style()
 
-    df = pd.read_csv(raw)
+    df = pd.read_csv(args.csv)
+    Z = extract_Z(df)
+
+    # Title bits from CSV (if present)
+    alpha = df.get("alpha", pd.Series([None])).iloc[0]
+    base  = df.get("base",  pd.Series([None])).iloc[0]
+    title_prefix = args.title or f"Proposition 2.6: α={alpha}, base={base}"
+
+    z_mean = float(np.mean(Z))
+    z_sd   = float(np.std(Z, ddof=1)) if len(Z) > 1 else 0.0
+
+    # X-range for overlay
+    lo, hi = np.min(Z), np.max(Z)
+    pad = max(1.5, 3.0*z_sd)
+    xs = np.linspace(lo - pad, hi + pad, 1200)
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    ax.hist(Z, bins=args.bins, density=True, alpha=0.65, edgecolor="none")
+    ax.plot(xs, normal_pdf(xs), linewidth=2.0, label="N(0,1) pdf")
+
+    ax.set_xlabel("Z")
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.25, linestyle=":", linewidth=0.8)
+    ax.legend(frameon=False, loc="upper right")
+    fig.suptitle(f"{title_prefix}: pooled Z — mean={z_mean:.2f}, sd={z_sd:.2f}")
 
     outdir = Path("results/figures"); outdir.mkdir(parents=True, exist_ok=True)
-    base = df["base"].iloc[0]; alpha = df["alpha"].iloc[0]
+    stem = f"prop26_zcheck_{Path(args.csv).stem}"
+    out_png = outdir / f"{stem}.png"
+    out_pdf = outdir / f"{stem}.pdf"
 
-    # ---------- coverage vs n (faceted by t) ----------
-    tvals = sorted(df["t"].unique())
-    fig, axes = plt.subplots(len(tvals), 1, figsize=(6.6, 3.1*len(tvals)), sharex=True)
-    if len(tvals) == 1: axes = [axes]
+    fig.savefig(out_png, dpi=150, bbox_inches="tight")
+    fig.savefig(out_pdf, bbox_inches="tight")
+    plt.close(fig)
 
-    for ax, t in zip(axes, tvals):
-        sub = df[df["t"] == t]
-        gg = (sub.groupby("n", as_index=False)
-                 .agg(coverage=("covered","mean")))
-        ax.plot(gg["n"], gg["coverage"], marker="o")
-        ax.axhline(0.95, ls="--", color="k", lw=1)
-        ax.set_ylim(0.7, 1.0)
-        ax.set_title(f"Coverage vs n (t={t})")
-        ax.set_ylabel("Coverage")
-
-    axes[-1].set_xlabel("n")
-    ttl = f"Prop 2.6 coverage — base={base}, α={alpha}"
-    if args.title: ttl += f" — {args.title}"
-    fig.suptitle(ttl, y=0.995, fontsize=12)
-    fig.tight_layout()
-    out1 = outdir / f"prop26_coverage_{raw.stem.replace('.csv','')}.png"
-    fig.savefig(out1, dpi=150); plt.close(fig)
-    print(f"[ok] wrote {out1}")
-
-    # ---------- mean CI width vs n (faceted by t) ----------
-    fig2, axes2 = plt.subplots(len(tvals), 1, figsize=(6.6, 3.1*len(tvals)), sharex=True)
-    if len(tvals) == 1: axes2 = [axes2]
-
-    for ax, t in zip(axes2, tvals):
-        sub = df[df["t"] == t]
-        gg = (sub.groupby("n", as_index=False)
-                 .agg(mean_width=("width","mean")))
-        ax.plot(gg["n"], gg["mean_width"], marker="o")
-        ax.set_title(f"Mean CI width vs n (t={t})")
-        ax.set_ylabel("Mean width")
-
-    axes2[-1].set_xlabel("n")
-    ttl = f"Prop 2.6 width — base={base}, α={alpha}"
-    if args.title: ttl += f" — {args.title}"
-    fig2.suptitle(ttl, y=0.995, fontsize=12)
-    fig2.tight_layout()
-    out2 = outdir / f"prop26_width_{raw.stem.replace('.csv','')}.png"
-    fig2.savefig(out2, dpi=150); plt.close(fig2)
-    print(f"[ok] wrote {out2}")
-
-    # ---------- normality check (pooled Z) ----------
-    if {"Pn","Fhat","Vnt","n"}.issubset(df.columns):
-        z = (df["Pn"] - df["Fhat"]) / np.sqrt(np.maximum(df["Vnt"], 1e-12) / df["n"])
-        plt.figure(figsize=(6.2, 4.2))
-        plt.hist(z, bins=40, density=True, alpha=0.8)
-        plt.title("Prop 2.6 pooled Z = (Pn - Fhat) / sqrt(Vn/n)")
-        plt.xlabel("Z"); plt.ylabel("Density")
-        out3 = outdir / f"prop26_zcheck_{raw.stem.replace('.csv','')}.png"
-        plt.tight_layout()
-        plt.savefig(out3, dpi=150); plt.close()
-        print(f"[ok] wrote {out3}")
+    print(f"[ok] wrote {out_png}")
+    print(f"[ok] wrote {out_pdf}")
 
 if __name__ == "__main__":
     main()

@@ -18,3 +18,28 @@ def use_nice_style():
         "lines.markersize": 6.5,
         "legend.frameon": False,
     })
+
+# --- central plotting style helper ---
+def apply_plot_style(rc_overrides: dict | None = None):
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt  # noqa: F401
+    rc = {
+        "pdf.fonttype": 42,              # embed TrueType; text stays selectable
+        "ps.fonttype": 42,
+        "savefig.bbox": "tight",         # trim whitespace
+
+        "figure.dpi": 150,
+        "savefig.bbox": "tight",
+        "axes.grid": True,
+        "grid.linestyle": ":",
+        "grid.linewidth": 0.8,
+        "grid.alpha": 0.25,
+        "axes.titlesize": "large",
+        "axes.labelsize": "medium",
+        "legend.frameon": False,
+        "xtick.labelsize": "small",
+        "ytick.labelsize": "small",
+    }
+    if rc_overrides:
+        rc.update(rc_overrides)
+    mpl.rcParams.update(rc)

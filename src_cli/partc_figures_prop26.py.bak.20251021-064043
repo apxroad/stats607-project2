@@ -1,0 +1,47 @@
+from __future__ import annotations
+import argparse
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+from src.plotstyle import apply_plot_style
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Part C — plot pooled Z only from the Prop 2.6 CSV."
+    )
+    ap.add_argument(
+        "--csv", required=True,
+        help="CSV produced by src_cli.partc_log_prop26 (must contain a 'Z' column)."
+    )
+    ap.add_argument(
+        "--title",
+        default="Prop 2.6 pooled Z = (Pn - Fhat) / sqrt(Vn/n)"
+    )
+    ap.add_argument("--bins", type=int, default=30)
+    args = ap.parse_args()
+
+    apply_plot_style()
+
+    df = pd.read_csv(args.csv)
+    zcol = next((c for c in df.columns if c.lower() == "z"), None)
+    if zcol is None:
+        raise ValueError(f"No 'Z' column found in {args.csv}; columns={list(df.columns)}")
+
+    fig = plt.figure(figsize=(8.5, 5.5))
+    ax = plt.gca()
+    ax.hist(df[zcol].dropna().values, bins=args.bins, density=True)
+    ax.set_xlabel("Z")
+    ax.set_ylabel("Density")
+    ax.set_title(args.title)
+    fig.tight_layout()
+
+    outdir = Path("results/figures"); outdir.mkdir(parents=True, exist_ok=True)
+    stem = Path(args.csv).stem
+    out_png = outdir / f"prop26_zcheck_{stem}.png"
+    fig.savefig(out_png)
+    fig.savefig(out_png.with_suffix(".pdf"))
+    print(f"[ok] wrote {out_png}")
+    print(f"[ok] wrote {out_png.with_suffix('.pdf')}")
+
+if __name__ == "__main__":
+    main()
