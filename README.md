@@ -6,15 +6,15 @@ This repository contains a **reproducible pipeline** implementing and extending 
 
 We investigate three core aspects of Bayesian prediction in Pólya sequences:
 
-- **Part A (Prior/Posterior Panels)**: Visualize how predictive distributions $P_m(t)$ evolve as data accumulate, showing convergence from prior to posterior for different concentrations $\alpha$ and thresholds $t$.
+- **Part A (Prior/Posterior Panels)**: Visualize how predictive distributions$P_m(t)$evolve as data accumulate, showing convergence from prior to posterior for different concentrations$\alpha$and thresholds$t$.
 
-- **Part B (Convergence Diagnostics)**: Assess how rapidly the predictive distribution $ P_m $ converges to the directing random measure $ \tilde{P} $ via grid-based distance metrics (sup-norm $ d^{(\infty)} $, RMSE) and visualize predictive path trajectories.
+- **Part B (Convergence Diagnostics)**: Assess how rapidly the predictive distribution$P_m$converges to the directing random measure$\tilde{P}$via grid-based distance metrics (sup-norm$d^{(\infty)}$, RMSE) and visualize predictive path trajectories.
 
 - **Part C (Asymptotic Validation)**: Verify **Proposition 2.6** from Fortini & Petrone (2024) [[2](#ref2)], which provides a Gaussian approximation of the posterior distribution:
-  $$
+ $$
   \tilde{P}(A) \mid x_{1:n} \approx \mathcal{N}\!\left(P_n(A), \frac{V_{n,A}}{n}\right)
-  $$
-  We test this by computing pooled-Z statistics and checking their convergence to $ \mathcal{N}(0,1) $.
+ $$
+  We test this by computing pooled-Z statistics and checking their convergence to$\mathcal{N}(0,1)$.
 
 All figures are saved to `results/figures` as **PNG**, and as **PDF** for print‑quality.
 
