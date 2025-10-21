@@ -38,3 +38,20 @@ results/
 *.broken
 *.prepit
 *~
+# editor/backup junk
+*~
+*.swp
+.DS_Store
+
+# temp/backup files
+*.bak
+*.bak2
+*.orig
+*.rej
+*.prepit
+*.broken
+
+# build/outputs
+results/
+__pycache__/
+.pytest_cache/
